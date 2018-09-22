@@ -19,7 +19,7 @@ antigen apply
   # list content of directory after cd
   c() {
     cd $1;
-    ls -Am;
+    ls -Alm;
   }
   alias cd="c"
 
