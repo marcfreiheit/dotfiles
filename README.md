@@ -1,2 +1,3 @@
 # dotfiles
-Dotfiles for vim, tmux and zsh
+
+My dotfiles for vim, tmux and zsh. Including plugins
