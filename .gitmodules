@@ -1,3 +1,6 @@
+[submodule "zsh/git-prompt"]
+	path = zsh/git-prompt
+	url = git@github.com:olivierverdier/zsh-git-prompt.git
 [submodule "vim/bundle/YouCompleteMe"]
 	path = vim/bundle/YouCompleteMe
 	url = git@github.com:Valloric/YouCompleteMe.git
