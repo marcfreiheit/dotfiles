@@ -3,7 +3,7 @@ export ANDROID_HOME=/Users/marcfreiheit/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 
 # Choose rbenv from brew, instead of built-in
-eval "$(rbenv init -)"
+#eval "$(rbenv init -)"
 
 export EDITOR='vim'
 export VISUAL='vim'
