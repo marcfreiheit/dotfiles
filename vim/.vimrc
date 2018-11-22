@@ -180,3 +180,11 @@ set t_Co=256
 set fillchars+=stl:\ ,stlnc:\
 set term=xterm-256color
 set termencoding=utf-8
+
+let g:vdebug_options = {
+      \ 'port' : 9090,
+      \ 'server' : '',
+      \ 'path_maps': {
+        \ '/usr/local/apache2/htdocs/aidorando/': '/Users/marcfreiheit/github/AidorandoWeb/'
+      \ }
+      \}
