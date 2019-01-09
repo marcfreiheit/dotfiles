@@ -121,12 +121,13 @@ endfunction
 
 " | CtrlP
 " |------------------------
-set wildignore+=*/tmp/*,*.so,*.swp,*.zip     " MacOSX/Linux
-let g:ctrlp_custom_ignore = {
-  \ 'dir':  '\v[\/]\.(git|hg|svn)|node_modules\|out\|log\|tmp$',
-  \ 'file': '\v\.(exe|so|dll)$',
-  \ }
-let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard'] " Exclude files from gitignore
+"set wildignore+=*/tmp/*,*.so,*.swp,*.zip     " MacOSX/Linux
+"let g:ctrlp_custom_ignore = {
+"  \ 'dir':  '\v[\/]\.(git|hg|svn)|node_modules\|out\|log\|tmp$',
+"  \ 'file': '\v\.(exe|so|dll|jpg|png|jpeg|pdf)$',
+"  \ }
+"let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard'] " Exclude files from gitignore
+let g:ctrlp_custom_ignore = '\v[\/](node_modules|target|dist|tmp)|(\.(swp|ico|git|svn))$'
 
 " | Syntastic - syntax checking
 " |------------------------
@@ -188,3 +189,5 @@ let g:vdebug_options = {
         \ '/usr/local/apache2/htdocs/aidorando/': '/Users/marcfreiheit/github/AidorandoWeb/'
       \ }
       \}
+
+set t_ut=
