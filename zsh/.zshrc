@@ -6,17 +6,15 @@ export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 export PATH=$PATH:/usr/local/bin
 
 # Choose rbenv from brew, instead of built-in
-eval "$(rbenv init -)"
+#eval "$(rbenv init -)"
 
 export EDITOR='vim'
 export VISUAL='vim'
 
-#CONFIG_LOCATION=$(readlink "$0")
 CONFIG_LOCATION=~/github/dotfiles
 source ${CONFIG_LOCATION}/zsh/antigen.zsh
 antigen use oh-my-zsh
 antigen bundle zsh-users/zsh-syntax-highlighting
-#antigen bundle vi-mode
 antigen apply
 
 # Functions
@@ -30,3 +28,9 @@ antigen apply
 source ${CONFIG_LOCATION}/zsh/keybindings.sh  
 source ${CONFIG_LOCATION}/zsh/prompt.sh
 
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/Users/marcfreiheit/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/marcfreiheit/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/Users/marcfreiheit/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/marcfreiheit/google-cloud-sdk/completion.zsh.inc'; fi
