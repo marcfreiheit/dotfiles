@@ -191,3 +191,8 @@ let g:vdebug_options = {
       \}
 
 set t_ut=
+
+autocmd FileType python set sw=4
+autocmd FileType python set ts=4
+autocmd FileType python set sts=4
+set relativenumber
