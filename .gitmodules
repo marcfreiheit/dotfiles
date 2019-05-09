@@ -76,3 +76,9 @@
 [submodule "vim/bundle/python-syntax"]
 	path = vim/bundle/python-syntax
 	url = git@github.com:hdima/python-syntax.git
+[submodule "vim/bundle/ultisnips"]
+	path = vim/bundle/ultisnips
+	url = git@github.com:SirVer/ultisnips.git
+[submodule "vim/bundle/pony.vim"]
+	path = vim/bundle/pony.vim
+	url = git@github.com:jmcomets/vim-pony.git

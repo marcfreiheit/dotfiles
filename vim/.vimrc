@@ -13,6 +13,7 @@ set expandtab
 set encoding=utf-8
 
 set number
+set relativenumber
 set showcmd
 set cursorline
 set lazyredraw
@@ -42,16 +43,6 @@ set writebackup
 
 " | Custom functions
 " |-----------------------
-" toggle between number and relativenumber
-function! ToggleNumber()
-    if(&relativenumber == 1)
-        set norelativenumber
-        set number
-    else
-        set relativenumber
-    endif
-endfunction
-
 set tabline=%!MyTabLine()
 function MyTabLine()
   let s = '' " complete tabline goes here
@@ -121,12 +112,6 @@ endfunction
 
 " | CtrlP
 " |------------------------
-"set wildignore+=*/tmp/*,*.so,*.swp,*.zip     " MacOSX/Linux
-"let g:ctrlp_custom_ignore = {
-"  \ 'dir':  '\v[\/]\.(git|hg|svn)|node_modules\|out\|log\|tmp$',
-"  \ 'file': '\v\.(exe|so|dll|jpg|png|jpeg|pdf)$',
-"  \ }
-"let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files -co --exclude-standard'] " Exclude files from gitignore
 let g:ctrlp_custom_ignore = '\v[\/](node_modules|target|dist|tmp)|(\.(swp|ico|git|svn))$'
 
 " | Syntastic - syntax checking
@@ -145,6 +130,8 @@ let syntastic_mode_map = { 'passive_filetypes': ['html'] }
 " additional settings to use with tsuquyomi
 let g:tsuquyomi_disable_quickfix = 1
 let g:syntastic_typescript_checkers = ['tsuquyomi'] " You shouldn't use 'tsc' checker.
+
+let g:syntastic_python_checkers = ['flake8']
 
 " disable angular related warnings in html
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute " ,"trimming empty <", "unescaped &" , "lacks \"action", "is not recognized!", "discarding unexpected"]
@@ -192,7 +179,37 @@ let g:vdebug_options = {
 
 set t_ut=
 
+" | Python
+" | ------------------------
 autocmd FileType python set sw=4
 autocmd FileType python set ts=4
 autocmd FileType python set sts=4
-set relativenumber
+let g:python_highlight_all = 1
+let g:syntastic_python_python_exec = '/usr/local/bin/flake8'
+
+" | YouCompleteMe
+" | ----------------------
+let g:ycm_collect_identifiers_from_tags_files = 1 " Let YCM read tags from Ctags file
+let g:ycm_use_ultisnips_completer = 1 " Default 1, just ensure
+let g:ycm_seed_identifiers_with_syntax = 1 " Completion for programming language's keyword
+let g:ycm_complete_in_comments = 1 " Completion in comments
+let g:ycm_complete_in_strings = 1 " Completion in string
+
+" | UltiSnips
+" | ----------------------
+" | Configured to be used with YouCompleteMe
+let g:UltiSnipsExpandTrigger       = "<c-j>"
+let g:UltiSnipsJumpForwardTrigger  = "<c-j>"
+let g:UltiSnipsJumpBackwardTrigger = "<c-p>"
+let g:UltiSnipsListSnippets        = "<c-k>" "List possible snippets based on current file
+
+" | Django Surround Settings
+" | ----------------------
+let b:surround_{char2nr("v")} = "{{ \r }}"
+let b:surround_{char2nr("{")} = "{{ \r }}"
+let b:surround_{char2nr("%")} = "{% \r %}"
+let b:surround_{char2nr("b")} = "{% block \1block name: \1 %}\r{% endblock \1\1 %}"
+let b:surround_{char2nr("i")} = "{% if \1condition: \1 %}\r{% endif %}"
+let b:surround_{char2nr("w")} = "{% with \1with: \1 %}\r{% endwith %}"
+let b:surround_{char2nr("f")} = "{% for \1for loop: \1 %}\r{% endfor %}"
+let b:surround_{char2nr("c")} = "{% comment %}\r{% endcomment %}"

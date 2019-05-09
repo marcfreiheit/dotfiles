@@ -1,0 +1,4 @@
+#!/bin/sh
+docker run -i --rm -v "$(pwd)":/app marcfreiheit/flake8 "$@"
+
+# vim: filetype=sh
