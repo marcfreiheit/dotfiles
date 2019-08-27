@@ -14,7 +14,7 @@ ARG GHC_BUILD_TYPE=gmp
 ARG GHC_VERSION=8.6.5
 
 ENV TERM=xterm-256color
-ENV TMUX_PLUGIN_MANAGER_PATH ~/.tmux/plugins
+ENV TMUX_PLUGIN_MANAGER_PATH /home/me/.tmux/plugins
 ENV SHELL /bin/zsh
 
 # Create a user called 'me'
@@ -105,7 +105,9 @@ RUN git clone https://github.com/powerline/fonts.git --depth=1 && \
 
 # install zsh plugins
 RUN apk add --no-cache gmp-dev
+USER me
 RUN git clone https://github.com/tmux-plugins/tpm .tmux/plugins/tpm && .tmux/plugins/tpm/bin/install_plugins
+USER root
 RUN git clone https://github.com/olivierverdier/zsh-git-prompt.git zsh/git-prompt && \
     stack init && \
     stack setup && \
@@ -143,5 +145,9 @@ COPY --chown=me:me tmux/.remote.tmux.conf .remote.tmux.conf
 RUN ln -sf zsh/.zshrc .zshrc
 
 RUN apk add --no-cache openssh-client
+RUN chown me: /home/me/.tmux
+USER me
+RUN  /home/me/.tmux/plugins/tpm/bin/install_plugins
+USER root
 COPY entrypoint.sh .
 ENTRYPOINT ["/home/me/entrypoint.sh"]

@@ -28,4 +28,6 @@ chown -R me: /var/run/docker.sock
 chown -R me: /home/me/.kube
 chown -R me: /home/.ssh
 chown -R me: /home/me/zsh
+chown -R me: /home/me/.tmux
+#home/me/.tmux/plugins/tpm/bin/install_plugins
 exec /sbin/su-exec me /bin/zsh "$@"
