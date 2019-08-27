@@ -1,0 +1,5 @@
+#!/bin/sh
+
+docker run --rm -v `pwd`:/usr/src/myapp rikorose/gcc-cmake:latest "@"
+
+# vim: filetype=sh

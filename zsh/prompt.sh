@@ -4,7 +4,7 @@ autoload -U colors && colors
 
 setopt PROMPT_SUBST
 
-export __GIT_PROMPT_DIR=/Users/marcfreiheit/github/dotfiles/zsh/git-prompt
+export __GIT_PROMPT_DIR=~/zsh/git-prompt
 export GIT_PROMPT_EXECUTABLE=${GIT_PROMPT_EXECUTABLE:-"python"}
 
 add-zsh-hook chpwd chpwd_update_git_vars

@@ -5,4 +5,4 @@ typeset -A ZSH_HIGHLIGHT_PATTERNS
 ZSH_HIGHLIGHT_PATTERNS+=('rm -rf *' 'fg=white,bold,bg=red')
 
 # To have globbing patterns compatible with my dark-blue background
-ZSH_HIGHLIGHT_STYLES[globbing]='fg=yellow,bold'
+#ZSH_HIGHLIGHT_STYLES[globbing]='fg=yellow,bold'
