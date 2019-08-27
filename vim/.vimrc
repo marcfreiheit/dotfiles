@@ -29,9 +29,16 @@ set foldnestmax=10
 set foldmethod=indent
 
 nnoremap j gj
+nnoremap gj j
 nnoremap k gk
+nnoremap gk k
 
 nnoremap gV `[v`]
+
+" | Zooming vim windows
+" |-----------------------
+noremap Zz <c-w>_ \| <c-w>\|
+noremap Zo <c-w>=
 
 inoremap jk <esc>
 
@@ -113,6 +120,13 @@ endfunction
 " | CtrlP
 " |------------------------
 let g:ctrlp_custom_ignore = '\v[\/](node_modules|target|dist|tmp)|(\.(swp|ico|git|svn))$'
+let g:ctrlp_extensions = ['tag']
+
+" | CTags
+" |-----------------------
+let g:auto_ctags_directory_list = ['.git'] " store tags in .git root dir
+let g:auto_ctags = 1 " create tags while writing a file
+let g:auto_ctags_tags_args = ['--tag-relative=yes', '--recurse=yes', '--sort=yes']
 
 " | Syntastic - syntax checking
 " |------------------------
