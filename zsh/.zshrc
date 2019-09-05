@@ -12,12 +12,12 @@ antigen bundle zsh-users/zsh-syntax-highlighting
 antigen apply
 
 # Functions
-  # list content of directory after cd
-  c() {
-    cd $1;
-    ls -A;
-  }
-  alias cd="c"
+# list content of directory after cd
+c() {
+  cd $1;
+  ls -A;
+}
+alias cd="c"
 
 source ${CONFIG_LOCATION}/zsh/keybindings.sh  
 source ${CONFIG_LOCATION}/zsh/prompt.sh

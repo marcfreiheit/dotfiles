@@ -23,7 +23,9 @@ RUN adduser -Ds /bin/zsh me
 WORKDIR /home/me
 ENV HOME /home/me
 
-RUN apk add --no-cache bash git zsh tmux vim curl python3 nodejs clang-libs docker openjdk8-jre-base cmake python3-dev make g++ npm su-exec which
+RUN apk add --no-cache bash git zsh tmux vim curl python3 nodejs clang-libs docker openjdk8-jre-base cmake python3-dev make g++ npm su-exec which python-dev libffi-dev openssl-dev gcc libc-dev py-pip
+
+RUN pip install docker-compose
 
 # Add ghcup's bin directory to the PATH so that the versions of GHC it builds
 # are available in the build layers
@@ -57,9 +59,7 @@ ENV GHCUP_SHA256="b4b200d896eb45b56c89d0cfadfcf544a24759a6ffac029982821cc96b2fae
 RUN apk upgrade --no-cache &&\
     apk add --no-cache \
         curl \
-        gcc \
         git \
-        libc-dev \
         xz &&\
     if [ "${GHC_BUILD_TYPE}" = "gmp" ]; then \
         echo "Installing 'libgmp'" &&\
@@ -130,7 +130,8 @@ RUN git clone https://github.com/vim-airline/vim-airline.git .vim/bundle/vim-air
     git clone https://github.com/kien/ctrlp.vim.git .vim/bundle/ctrlp.vim && \
     git clone https://github.com/christoomey/vim-tmux-navigator.git .vim/bundle/vim-tmux-navigator && \
     git clone https://github.com/luochen1990/rainbow.git .vim/bundle/rainbow && \
-    git clone https://github.com/tpope/vim-fugitive.git .vim/bundle/vim-fugitive
+    git clone https://github.com/tpope/vim-fugitive.git .vim/bundle/vim-fugitive && \
+    git clone https://github.com/itchyny/vim-haskell-indent.git .vim/bundle/vim-haskell-indent
 
 # copy and link configuration files
 COPY --chown=me:me zsh/ zsh
@@ -150,4 +151,5 @@ USER me
 RUN  /home/me/.tmux/plugins/tpm/bin/install_plugins
 USER root
 COPY entrypoint.sh .
+RUN apk add --no-cache shadow grep
 ENTRYPOINT ["/home/me/entrypoint.sh"]
