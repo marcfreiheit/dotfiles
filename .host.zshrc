@@ -20,6 +20,7 @@ dide() {
       -v ~/.config/gcloud:/home/me/.config/gcloud \
       -v ~/.ssh:/home/me/.ssh \
       -v /var/run/docker.sock:/var/run/docker.sock \
+      -v ~/.zsh_history:/home/me/.zsh_history \
       --name ide-$(basename "$PWD") \
       marcfreiheit/dotfiles:latest  
   fi

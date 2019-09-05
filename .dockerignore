@@ -2,3 +2,6 @@ vim/bundle
 vim/autoload
 tmux/plugins
 tags
+run_on_local_directory.sh
+.host.zshrc
+README.md
