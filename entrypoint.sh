@@ -2,7 +2,7 @@
 
 DOCKER_SOCKET=/var/run/docker.sock
 DOCKER_GROUP=docker
-USER=me
+USER=marcfreiheit
 
 # Get standard cali USER_ID variable
 #USER_ID=${HOST_USER_ID:-9001}
@@ -35,14 +35,13 @@ chmod 777 /var/run/docker.sock
 #/bin/zsh
 #exec /sbin/su-exec me tmux -u -2 "$@"
 
-chown -R me: /home/me/.config
-#chown -R me: /var/run/docker.sock
-chown -R me: /home/me/.kube
-chown -R me: /home/me/.ssh
-chown -R me: /home/me/zsh
-chown -R me: /home/me/.tmux
-chown -R me: /home/me/.stack /home/me/.stack-work
-#home/me/.tmux/plugins/tpm/bin/install_plugins
-exec /sbin/su-exec me /bin/zsh "$@"
+chown -R marcfreiheit: /home/marcfreiheit/.config
+#chown -R marcfreiheit: /var/run/docker.sock
+chown -R marcfreiheit: /home/marcfreiheit/.kube
+chown -R marcfreiheit: /home/marcfreiheit/.ssh
+chown -R marcfreiheit: /home/marcfreiheit/zsh
+chown -R marcfreiheit: /home/marcfreiheit/.tmux
+#chown -R marcfreiheit: /home/marcfreiheit/.stack /home/me/.stack-work
+exec /sbin/su-exec marcfreiheit /bin/zsh "$@"
 #newgrp ${DOCKER_GROUP}
 #newgrp $(id -gn)

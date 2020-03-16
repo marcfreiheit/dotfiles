@@ -1,100 +1,51 @@
-FROM alpine:3.9
+# syntax = docker/dockerfile:1.0-experimental
 
-LABEL MAINTAINER="Marc André Freiheit <marcandre@freiheit.software>"
+ARG ALPINE_VERSION=3.10.2
+ARG RUBY_VERSION=2.7.0
+ARG USER=marcfreiheit
+ARG GROUP=developers
 
-# Note: Latest version of kubectl may be found at:
-# https://aur.archlinux.org/packages/kubectl-bin/
-ARG KUBE_LATEST_VERSION="v1.15.2"
-# Note: Latest version of helm may be found at:
-# https://github.com/kubernetes/helm/releases
-ARG HELM_VERSION="v2.14.3"
+ARG RBENV_ROOT=/usr/local/rbenv
 
-# Carry build args through to this stage
-ARG GHC_BUILD_TYPE=gmp
-ARG GHC_VERSION=8.6.5
+FROM alpine:${ALPINE_VERSION} AS build_tools
 
-ENV TERM=xterm-256color
-ENV TMUX_PLUGIN_MANAGER_PATH /home/me/.tmux/plugins
-ENV SHELL /bin/zsh
+RUN apk add --no-cache git
 
-# Create a user called 'me'
-RUN adduser -Ds /bin/zsh me
-# Do everything from now in that users home directory
-WORKDIR /home/me
-ENV HOME /home/me
+FROM alpine:${ALPINE_VERSION} AS ruby
 
-RUN apk add --no-cache bash git zsh tmux vim curl python3 nodejs clang-libs docker openjdk8-jre-base cmake python3-dev make g++ npm su-exec which python-dev libffi-dev openssl-dev gcc libc-dev py-pip
+# Duplicate build arg because of https://github.com/moby/moby/issues/34129
+ARG RBENV_ROOT=/usr/local/rbenv
+ARG RUBY_VERSION=2.7.0
 
-RUN pip install docker-compose
+ENV RBENV_ROOT $RBENV_ROOT
+ENV PATH $RBENV_ROOT/shims:$RBENV_ROOT/bin:$PATH
 
-# Add ghcup's bin directory to the PATH so that the versions of GHC it builds
-# are available in the build layers
-ENV GHCUP_INSTALL_BASE_PREFIX=/
-ENV PATH=/.ghcup/bin:$PATH
+RUN apk add --no-cache \
+      linux-headers \
+      imagemagick-dev \
+      libffi-dev \
+      bash \
+      build-base \
+      readline-dev \
+      openssl-dev \
+      zlib-dev \
+      git
 
-COPY --from=marcfreiheit/ghcup:latest /.ghcup /.ghcup
-COPY --from=marcfreiheit/haskell-stack:latest /usr/bin/stack /usr/bin/stack
+RUN git clone --depth 1 https://github.com/sstephenson/rbenv.git ${RBENV_ROOT} \
+&&  git clone --depth 1 https://github.com/sstephenson/ruby-build.git ${RBENV_ROOT}/plugins/ruby-build \ 
+&& ${RBENV_ROOT}/plugins/ruby-build/install.sh
 
-# Must be one of 'gmp' or 'simple'; used to build GHC with support for either
-# 'integer-gmp' (with 'libgmp') or 'integer-simple'
-#
-# Default to building with 'integer-gmp' and 'libgmp' support
-ARG GHC_BUILD_TYPE
+RUN rbenv install $RUBY_VERSION \
+&&  rbenv global $RUBY_VERSION
 
-# Must be a valid GHC version number, only tested with 8.4.4, 8.6.4, and 8.6.5
-#
-# Default to GHC version 8.6.5 (latest at the time of writing)
-ARG GHC_VERSION=8.6.5
+COPY Gemfile .
 
-# Add ghcup's bin directory to the PATH so that the versions of GHC it builds
-# are available in the build layers
-ENV GHCUP_INSTALL_BASE_PREFIX=/
-ENV PATH=/.ghcup/bin:$PATH
+RUN gem install bundler \
+&&  bundle install
 
-# Use the latest version of ghcup (at the time of writing)
-ENV GHCUP_VERSION=0.0.7
-ENV GHCUP_SHA256="b4b200d896eb45b56c89d0cfadfcf544a24759a6ffac029982821cc96b2faedb  ghcup"
+FROM alpine:${ALPINE_VERSION} AS fonts
 
-# Install the basic required dependencies to run 'ghcup' and 'stack'
-RUN apk upgrade --no-cache &&\
-    apk add --no-cache \
-        curl \
-        git \
-        xz &&\
-    if [ "${GHC_BUILD_TYPE}" = "gmp" ]; then \
-        echo "Installing 'libgmp'" &&\
-        apk add --no-cache gmp-dev; \
-    fi
-
-# Download, verify, and install ghcup
-RUN echo "Downloading and installing ghcup" &&\
-    cd /tmp &&\
-    wget -P /tmp/ "https://gitlab.haskell.org/haskell/ghcup/raw/${GHCUP_VERSION}/ghcup" &&\
-    if ! echo -n "${GHCUP_SHA256}" | sha256sum -c -; then \
-        echo "ghcup-${GHCUP_VERSION} checksum failed" >&2 &&\
-        exit 1 ;\
-    fi ;\
-    mv /tmp/ghcup /usr/bin/ghcup &&\
-    chmod +x /usr/bin/ghcup
-
-RUN mkdir -p /home/me/.stack && echo " allow-different-user: true" >> /home/me/.stack/config.yaml
-RUN ghcup set ${GHC_VERSION} && \
-    stack config set system-ghc --global true
-
-RUN apk add --no-cache --virtual .build-deps ca-certificates openssh \
-    && wget -q https://storage.googleapis.com/kubernetes-release/release/${KUBE_LATEST_VERSION}/bin/linux/amd64/kubectl -O /usr/local/bin/kubectl \
-    && chmod +x /usr/local/bin/kubectl \
-    && wget -q https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz -O - | tar -xzO linux-amd64/helm > /usr/local/bin/helm \
-    && chmod +x /usr/local/bin/helm \
-    && apk del --no-cache .build-deps
-
-# install gcloud tools
-RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz && \
-    mkdir -p /usr/local/gcloud && \
-    tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz && \
-    /usr/local/gcloud/google-cloud-sdk/install.sh && \
-    chown -R me: /usr/local/gcloud
-ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
+RUN apk add --no-cache git
 
 # install powerline fonts
 RUN git clone https://github.com/powerline/fonts.git --depth=1 && \
@@ -103,21 +54,33 @@ RUN git clone https://github.com/powerline/fonts.git --depth=1 && \
     cd .. && \
     rm -rf fonts
 
-# install zsh plugins
-RUN apk add --no-cache gmp-dev
-USER me
-RUN git clone https://github.com/tmux-plugins/tpm .tmux/plugins/tpm && .tmux/plugins/tpm/bin/install_plugins
-USER root
-RUN git clone https://github.com/olivierverdier/zsh-git-prompt.git zsh/git-prompt && \
-    stack init && \
-    stack setup && \
-    stack build && stack install && \
-    touch /home/me/zsh/git-prompt/src/.bin/gitstatus && \
-    chmod 777 /home/me/zsh/git-prompt/src/.bin/gitstatus 
+
+FROM alpine:${ALPINE_VERSION} AS kubernetes
+
+# Note: Latest version of kubectl may be found at:
+# https://aur.archlinux.org/packages/kubectl-bin/
+ARG KUBE_LATEST_VERSION="v1.15.2"
+# Note: Latest version of helm may be found at:
+# https://github.com/kubernetes/helm/releases
+ARG HELM_VERSION="v2.14.3"
+
+RUN apk add --no-cache --virtual .build-deps ca-certificates openssh \
+    && wget -q https://storage.googleapis.com/kubernetes-release/release/${KUBE_LATEST_VERSION}/bin/linux/amd64/kubectl -O /usr/local/bin/kubectl \
+    && chmod +x /usr/local/bin/kubectl \
+    && wget -q https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz -O - | tar -xzO linux-amd64/helm > /usr/local/bin/helm \
+    && chmod +x /usr/local/bin/helm \
+    && apk del --no-cache .build-deps
+
+
+FROM alpine:${ALPINE_VERSION} AS vim
+
+WORKDIR /root
+
+RUN apk add --no-cache git python3 python3-dev build-base cmake npm curl
 
 # install vim package manager pathogen
-RUN mkdir -p ~/.vim/autoload ~/.vim/bundle && \
-    curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+RUN mkdir -p .vim/autoload .vim/bundle && \
+    curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
 
 # install and compise YouCompleteMe
 RUN git clone https://github.com/ycm-core/YouCompleteMe.git .vim/bundle/ycm && \
@@ -133,23 +96,159 @@ RUN git clone https://github.com/vim-airline/vim-airline.git .vim/bundle/vim-air
     git clone https://github.com/tpope/vim-fugitive.git .vim/bundle/vim-fugitive && \
     git clone https://github.com/itchyny/vim-haskell-indent.git .vim/bundle/vim-haskell-indent
 
-# copy and link configuration files
-COPY --chown=me:me zsh/ zsh
-COPY --chown=me:me zsh/.zshrc .zshrc
 
-COPY --chown=me:me vim/.vimrc .vimrc
-COPY --chown=me:me vim/colors .vim/colors
+FROM alpine:${ALPINE_VERSION} AS tmux
 
-COPY --chown=me:me tmux/.tmux.conf .tmux.conf
-COPY --chown=me:me tmux/.remote.tmux.conf .remote.tmux.conf
+ENV TMUX_PLUGIN_MANAGER_PATH=/root/.tmux/plugins
 
+# install zsh plugins
+RUN apk add --no-cache git bash tmux
+COPY tmux/.tmux.conf /root/.tmux.conf
+RUN git clone https://github.com/tmux-plugins/tpm /root/.tmux/plugins/tpm && /root/.tmux/plugins/tpm/bin/install_plugins
+
+
+FROM alpine:${ALPINE_VERSION} AS gcloud
+
+ENV PATH /usr/local/gcloud/google-cloud-sdk/bin:$PATH
+
+RUN apk add --no-cache curl python3
+RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz && \
+    mkdir -p /usr/local/gcloud && \
+    tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz && \
+    /usr/local/gcloud/google-cloud-sdk/install.sh
+RUN gcloud config set core/disable_usage_reporting true && \
+    gcloud config set component_manager/disable_update_check true && \
+    gcloud config set metrics/environment github_docker_image
+
+
+FROM alpine:${ALPINE_VERSION}
+
+LABEL MAINTAINER="Marc André Freiheit <marcandre@freiheit.software>"
+LABEL ALPINE_VERSION=${ALPINE_VERSION}
+
+RUN addgroup -S developers && adduser -SDs /bin/zsh -G developers marcfreiheit
+WORKDIR /home/marcfreiheit
+ENV HOME /home/marcfreiheit
+
+ARG LOCALE="de_DE"
+ARG TZ="Europe/Berlin"
+
+
+# Install and configure locals
+RUN apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/${TZ} /etc/localtime && \
+    apk del --purge tzdata && \
+    echo "${TZ}" > /etc/timezone
+ENV LANG=${LOCALE}.UTF-8 \
+    LANGUAGE=${LOCALE}.UTF-8 \
+    LC_ALL=${LOCALE}.UTF-8 \
+    TZ=${TZ}
+
+# Set Shell settings
+ENV TERM=xterm-256color \
+    SHELL=/bin/zsh \
+    LIBRARY_PATH=/lib:/usr/lib
+
+# Environment configuration for Google Cloud
+ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
+
+# Environment configuration for Java
+ENV JAVA_HOME=/usr/lib/jvm/java-1.8-openjdk
+ENV PATH="$JAVA_HOME/bin:${PATH}"
+
+# Environment configuration for Haskell and the Glasgow Compiler
+# Add ghcup's bin directory to the PATH so that the versions of GHC it builds
+# are available in the build layers
+ENV GHCUP_INSTALL_BASE_PREFIX=/
+ENV PATH=/.ghcup/bin:$PATH
+
+# Environment configuration for zsh
+ENV TMUX_PLUGIN_MANAGER_PATH=/home/marcfreiheit/.tmux/plugins
+
+# Environment configuration for ruby
+ARG RBENV_ROOT=/usr/local/rbenv
+ENV RBENV_ROOT $RBENV_ROOT
+ENV PATH $RBENV_ROOT/shims:/$RBENV_ROOT/bin:$PATH
+
+# Environment configuration for Docker
+ENV COMPOSE_DOCKER_CLI_BUILD=${COMPOSE_DOCKER_CLI_BUILD}
+ENV DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
+
+# Carry build args through to this stage
+ARG GHC_BUILD_TYPE=gmp
+ARG GHC_VERSION=8.6.5
+
+# Environment configuration for python (and pip)
+ENV PATH /home/marcfreiheit/.local/bin:$PATH
+
+# 1. Development tools
+# 1. - Bash is required by tmux to run its plugins
+# 2. Programming languages and libraries
+# 3. Ruby
+# 4. Building tools
+# 5. Docker
+# 6. Package managers
+# 7. Miscellaneous
+RUN apk add --no-cache \
+  git git-perl zsh tmux vim bash \
+  python3 nodejs clang-libs openjdk8 \
+  libressl readline-dev \
+  build-base python-dev py-pip jpeg-dev zlib-dev icu-dev shadow grep ruby-dev ruby-rdoc ruby-etc \
+  cmake python-dev make g++ libffi-dev openssl-dev gcc libc-dev gmp-dev \
+  docker \
+  npm \
+  su-exec which openssh-client curl py-pip less ca-certificates
+
+RUN mkdir /github && chown marcfreiheit:developers /github
+
+RUN git clone https://github.com/olivierverdier/zsh-git-prompt.git /home/marcfreiheit/zsh/git-prompt
+
+COPY --chown=marcfreiheit:developers Gemfile .
+
+ARG COMPOSE_DOCKER_CLI_BUILD=1
+ARG DOCKER_BUILDKIT=1
+ARG BUILDKIT_VERSION=v0.6.4
+
+# programming languages and frameworks
+COPY --from=ruby --chown=marcfreiheit:developers $RBENV_ROOT $RBENV_ROOT
+
+# tooling
+COPY --from=kubernetes /usr/local/bin/helm /usr/local/bin/helm
+COPY --from=kubernetes /usr/local/bin/kubectl /usr/local/bin/kubectl
+COPY --from=gcloud --chown=marcfreiheit:developers /usr/local/gcloud /usr/local/gcloud
+COPY --from=moby/buildkit:v0.6.4 --chown=marcfreiheit:developers /usr/bin/buildctl /usr/local/bin/builtctl
+
+# vim
+COPY --chown=marcfreiheit:developers --from=vim /root/.vim /home/marcfreiheit/.vim
+COPY --chown=marcfreiheit:developers vim/.vimrc .vimrc
+COPY --chown=marcfreiheit:developers vim/colors .vim/colors
+
+# tmux
+COPY --chown=marcfreiheit:developers --from=tmux /root/.tmux /home/marcfreiheit/.tmux
+COPY --chown=marcfreiheit:developers --from=tmux /root/.tmux.conf /home/marcfreiheit/.tmux.conf
+COPY --chown=marcfreiheit:developers tmux/.remote.tmux.conf .remote.tmux.conf
+
+COPY --chown=marcfreiheit:developers entrypoint.sh .
+
+COPY --from=fonts /root/.local/share/fonts /home/marcfreiheit/.local/share/fonts
+
+# zsh
+COPY --chown=marcfreiheit:developers zsh/ zsh
 RUN ln -sf zsh/.zshrc .zshrc
 
-RUN apk add --no-cache openssh-client
-RUN chown me: /home/me/.tmux
-USER me
-RUN  /home/me/.tmux/plugins/tpm/bin/install_plugins
-USER root
-COPY entrypoint.sh .
-RUN apk add --no-cache shadow grep
-ENTRYPOINT ["/home/me/entrypoint.sh"]
+# Clean non-wanted files
+#RUN rm -rf /etc/profile.d && \
+#    rm /etc/profile
+
+RUN touch /home/marcfreiheit/zsh/git-prompt/src/.bin/gitstatus && \ 
+    chmod 777 /home/marcfreiheit/zsh/git-prompt/src/.bin/gitstatus
+
+# Haskell
+#COPY --from=marcfreiheit/ghcup:latest /.ghcup /.ghcup
+#COPY --from=marcfreiheit/haskell-stack:latest /usr/bin/stack /usr/bin/stack
+
+RUN chown -R marcfreiheit:developers /home/marcfreiheit/.local
+
+RUN pip install docker-compose
+
+ENTRYPOINT ["/home/marcfreiheit/entrypoint.sh"]
