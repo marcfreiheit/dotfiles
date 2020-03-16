@@ -21,6 +21,9 @@ c() {
   ls -A;
 }
 alias cd="c"
+history() {
+  fc -l 1
+}
 hgrep() {
   history | grep $1;
 }
