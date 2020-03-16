@@ -14,11 +14,6 @@ export VISUAL='vim'
 
 CONFIG_LOCATION=~
 
-# Antigen plugins
-source ${CONFIG_LOCATION}/zsh/antigen.zsh
-antigen bundle zsh-users/zsh-syntax-highlighting
-antigen apply
-
 # Functions
 # list content of directory after cd
 c() {
@@ -37,5 +32,15 @@ source ${CONFIG_LOCATION}/zsh/zsh-highlighting.sh
 export GIT_PROMPT_EXECUTABLE="haskell"
 #source ${CONFIG_LOCATION}/zsh/apps.sh
 
+source /home/marcfreiheit/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
 # Stuff which should not have been comitted
 export HOMEBREW_GITHUB_API_TOKEN=2f94bb55e7e1745a73a9c6a3cd5aff0a00b2412d
+
+# History Configuration
+HISTSIZE=5000
+SAVEHIST=5000
+HISTFILE=~/.zsh_history
+setopt    appendhistory     #Append history to the history file (no overwriting) 
+setopt    sharehistory      #Share history across terminals
+setopt    incappendhistory  #Immediately append to the history file, not just when a term is killed
