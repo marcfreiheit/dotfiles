@@ -7,9 +7,42 @@ ARG GROUP=developers
 
 ARG RBENV_ROOT=/usr/local/rbenv
 
-FROM alpine:${ALPINE_VERSION} AS build_tools
+ARG GHC_VERSION=8.8.2
 
-RUN apk add --no-cache git
+################################################################################
+# Set up environment variables, OS packages, and scripts that are common to the
+# build and distribution layers in this Dockerfile
+FROM alpine:${ALPINE_VERSION} AS haskell-base
+
+ARG GHC_VERSION=8.8.2
+
+ENV GHCUP_INSTALL_BASE_PREFIX=/home/marcfreiheit
+
+ENV GHCUP_VERSION=0.0.8
+ENV GHCUP_SHA256="e09669752067dc1268bff754237e91c4dee9b35bc4e20c280faafeef9c21ea74  ghcup"
+
+RUN mkdir -p /home/marcfreiheit
+
+# ToDo: Refactor because of duplicated dependencies
+RUN apk upgrade --no-cache \
+&&  apk add --no-cache \
+        curl \
+        gcc \
+        git \
+        libc-dev \
+        xz \
+        gmp-dev
+
+RUN echo "Downloading and installing ghcup" &&\
+    cd /tmp &&\
+    wget -P /tmp/ "https://gitlab.haskell.org/haskell/ghcup/raw/${GHCUP_VERSION}/ghcup" &&\
+    if ! echo -n "${GHCUP_SHA256}" | sha256sum -c -; then \
+        echo "ghcup-${GHCUP_VERSION} checksum failed" >&2 &&\
+        exit 1 ;\
+    fi ;\
+    mv /tmp/ghcup /usr/bin/ghcup &&\
+    chmod +x /usr/bin/ghcup
+
 
 FROM alpine:${ALPINE_VERSION} AS ruby
 
@@ -36,6 +69,7 @@ RUN git clone --depth 1 https://github.com/sstephenson/rbenv.git ${RBENV_ROOT} \
 && ${RBENV_ROOT}/plugins/ruby-build/install.sh
 
 RUN rbenv install $RUBY_VERSION \
+&&  rbenv install 2.6.5 \
 &&  rbenv global $RUBY_VERSION
 
 COPY Gemfile .
@@ -82,19 +116,12 @@ RUN apk add --no-cache git python3 python3-dev build-base cmake npm curl
 RUN mkdir -p .vim/autoload .vim/bundle && \
     curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
 
-# install and compise YouCompleteMe
-RUN git clone https://github.com/ycm-core/YouCompleteMe.git .vim/bundle/ycm && \
-    cd .vim/bundle/ycm && \
-    git submodule update --init --recursive && \
-    python3 install.py --clang-completer --ts-completer --java-completer
-    
 # install vim plugins (using pathogen)
 RUN git clone https://github.com/vim-airline/vim-airline.git .vim/bundle/vim-airline && \
-    git clone https://github.com/kien/ctrlp.vim.git .vim/bundle/ctrlp.vim && \
     git clone https://github.com/christoomey/vim-tmux-navigator.git .vim/bundle/vim-tmux-navigator && \
     git clone https://github.com/luochen1990/rainbow.git .vim/bundle/rainbow && \
     git clone https://github.com/tpope/vim-fugitive.git .vim/bundle/vim-fugitive && \
-    git clone https://github.com/itchyny/vim-haskell-indent.git .vim/bundle/vim-haskell-indent
+    git clone https://github.com/mileszs/ack.vim.git ~/.vim/bundle/ack.vim
 
 
 FROM alpine:${ALPINE_VERSION} AS tmux
@@ -120,8 +147,63 @@ RUN gcloud config set core/disable_usage_reporting true && \
     gcloud config set component_manager/disable_update_check true && \
     gcloud config set metrics/environment github_docker_image
 
+FROM haskell-base AS build-ghc
 
-FROM alpine:${ALPINE_VERSION}
+# Carry build args through to this stage
+ARG GHC_VERSION=8.8.2
+
+RUN echo "Install OS packages necessary to build GHC" &&\
+    apk add --no-cache \
+        autoconf \
+        automake \
+        binutils-gold \
+        build-base \
+        coreutils \
+        cpio \
+        ghc \
+        linux-headers \
+        libffi-dev \
+        llvm5 \
+        musl-dev \
+        ncurses-dev \
+        perl \
+        python3 \
+        py3-sphinx \
+        zlib-dev
+
+COPY haskell/build-gmp.mk /tmp/build.mk
+
+RUN echo "Compiling and installing GHC" &&\
+    LD=ld.gold \
+    SPHINXBUILD=/usr/bin/sphinx-build-3 \
+      ghcup -v compile -j $(nproc) -c /tmp/build.mk ${GHC_VERSION} ghc-8.4.3 &&\
+    rm /tmp/build.mk &&\
+    echo "Uninstalling GHC bootstrapping compiler" &&\
+    apk del ghc &&\
+    ghcup set ${GHC_VERSION}
+
+################################################################################
+# Intermediate layer that assembles 'stack' tooling
+FROM haskell-base AS build-tooling
+
+ENV STACK_VERSION=2.1.3
+ENV STACK_SHA256="4e937a6ad7b5e352c5bd03aef29a753e9c4ca7e8ccc22deb5cd54019a8cf130c  stack-${STACK_VERSION}-linux-x86_64-static.tar.gz"
+
+# Download, verify, and install stack
+RUN echo "Downloading and installing stack" &&\
+    cd /tmp &&\
+    wget -P /tmp/ "https://github.com/commercialhaskell/stack/releases/download/v${STACK_VERSION}/stack-${STACK_VERSION}-linux-x86_64-static.tar.gz" &&\
+    if ! echo -n "${STACK_SHA256}" | sha256sum -c -; then \
+        echo "stack-${STACK_VERSION} checksum failed" >&2 &&\
+        exit 1 ;\
+    fi ;\
+    tar -xvzf /tmp/stack-${STACK_VERSION}-linux-x86_64-static.tar.gz &&\
+    cp -L /tmp/stack-${STACK_VERSION}-linux-x86_64-static/stack /usr/bin/stack &&\
+    rm /tmp/stack-${STACK_VERSION}-linux-x86_64-static.tar.gz &&\
+    rm -rf /tmp/stack-${STACK_VERSION}-linux-x86_64-static
+
+
+FROM haskell-base
 
 LABEL MAINTAINER="Marc André Freiheit <marcandre@freiheit.software>"
 LABEL ALPINE_VERSION=${ALPINE_VERSION}
@@ -133,6 +215,7 @@ ENV HOME /home/marcfreiheit
 ARG LOCALE="de_DE"
 ARG TZ="Europe/Berlin"
 
+ARG GHC_VERSION=8.8.2
 
 # Install and configure locals
 RUN apk add --no-cache tzdata && \
@@ -156,12 +239,6 @@ ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
 ENV JAVA_HOME=/usr/lib/jvm/java-1.8-openjdk
 ENV PATH="$JAVA_HOME/bin:${PATH}"
 
-# Environment configuration for Haskell and the Glasgow Compiler
-# Add ghcup's bin directory to the PATH so that the versions of GHC it builds
-# are available in the build layers
-ENV GHCUP_INSTALL_BASE_PREFIX=/
-ENV PATH=/.ghcup/bin:$PATH
-
 # Environment configuration for zsh
 ENV TMUX_PLUGIN_MANAGER_PATH=/home/marcfreiheit/.tmux/plugins
 
@@ -175,42 +252,55 @@ ENV COMPOSE_DOCKER_CLI_BUILD=${COMPOSE_DOCKER_CLI_BUILD}
 ENV DOCKER_BUILDKIT=${DOCKER_BUILDKIT}
 
 # Carry build args through to this stage
-ARG GHC_BUILD_TYPE=gmp
-ARG GHC_VERSION=8.6.5
+ARG GHC_VERSION=8.8.2
 
 # Environment configuration for python (and pip)
 ENV PATH /home/marcfreiheit/.local/bin:$PATH
+
+ENV NODE_SASS_PLATFORM=alpine
 
 # 1. Development tools
 # 1. - Bash is required by tmux to run its plugins
 # 2. Programming languages and libraries
 # 3. Ruby
-# 4. Building tools
-# 5. Docker
-# 6. Package managers
-# 7. Miscellaneous
+# 4. Haskell
+# 5. Building tools
+# 6. Docker
+# 7. Package managers
+# 8. Miscellaneous
 RUN apk add --no-cache \
-  git git-perl zsh tmux vim bash \
+  git git-perl zsh tmux vim bash ack \
   python3 nodejs clang-libs openjdk8 \
   libressl readline-dev \
+  xz \
   build-base python-dev py-pip jpeg-dev zlib-dev icu-dev shadow grep ruby-dev ruby-rdoc ruby-etc \
   cmake python-dev make g++ libffi-dev openssl-dev gcc libc-dev gmp-dev \
   docker \
   npm \
-  su-exec which openssh-client curl py-pip less ca-certificates
+  su-exec which openssh-client curl py-pip less ca-certificates findutils
+
+RUN set -xe \
+&&  npm install -g node-gyp ionic cordova \
+&&  rm -rf /var/cache/apk/* /tmp/*
+
+RUN pip install docker-compose
+
 
 RUN mkdir /github && chown marcfreiheit:developers /github
 
 RUN git clone https://github.com/olivierverdier/zsh-git-prompt.git /home/marcfreiheit/zsh/git-prompt
-
-COPY --chown=marcfreiheit:developers Gemfile .
+RUN git clone https://github.com/zsh-users/zsh-syntax-highlighting.git /home/marcfreiheit/zsh/zsh-syntax-highlighting
 
 ARG COMPOSE_DOCKER_CLI_BUILD=1
 ARG DOCKER_BUILDKIT=1
 ARG BUILDKIT_VERSION=v0.6.4
 
+COPY --chown=marcfreiheit:developers Gemfile .
+
 # programming languages and frameworks
 COPY --from=ruby --chown=marcfreiheit:developers $RBENV_ROOT $RBENV_ROOT
+COPY --chown=marcfreiheit:developers --from=build-ghc /home/marcfreiheit/.ghcup .ghcup
+COPY --chown=marcfreiheit:developers --from=build-tooling /usr/bin/stack /usr/bin/stack
 
 # tooling
 COPY --from=kubernetes /usr/local/bin/helm /usr/local/bin/helm
@@ -228,27 +318,28 @@ COPY --chown=marcfreiheit:developers --from=tmux /root/.tmux /home/marcfreiheit/
 COPY --chown=marcfreiheit:developers --from=tmux /root/.tmux.conf /home/marcfreiheit/.tmux.conf
 COPY --chown=marcfreiheit:developers tmux/.remote.tmux.conf .remote.tmux.conf
 
-COPY --chown=marcfreiheit:developers entrypoint.sh .
-
+# Fonts
 COPY --from=fonts /root/.local/share/fonts /home/marcfreiheit/.local/share/fonts
+
+# Entrypoint
+COPY --chown=marcfreiheit:developers entrypoint.sh .
 
 # zsh
 COPY --chown=marcfreiheit:developers zsh/ zsh
 RUN ln -sf zsh/.zshrc .zshrc
 
-# Clean non-wanted files
-#RUN rm -rf /etc/profile.d && \
-#    rm /etc/profile
-
 RUN touch /home/marcfreiheit/zsh/git-prompt/src/.bin/gitstatus && \ 
     chmod 777 /home/marcfreiheit/zsh/git-prompt/src/.bin/gitstatus
 
-# Haskell
-#COPY --from=marcfreiheit/ghcup:latest /.ghcup /.ghcup
-#COPY --from=marcfreiheit/haskell-stack:latest /usr/bin/stack /usr/bin/stack
+ENV GHCUP_INSTALL_BASE_PREFIX=/home/marcfreiheit
+ENV PATH=/home/marcfreiheit/.ghcup/bin:$PATH
+
+RUN ghcup set ${GHC_VERSION}
 
 RUN chown -R marcfreiheit:developers /home/marcfreiheit/.local
 
-RUN pip install docker-compose
+RUN apk add --no-cache postgresql-dev libc6-compat
+
+RUN ln -s /lib64/ld-linux-x86-64.so.2 /lib/ld-linux-x86-64.so.2
 
 ENTRYPOINT ["/home/marcfreiheit/entrypoint.sh"]
